@@ -1,3 +1,4 @@
+import os
 import random
 from pathlib import Path
 
@@ -6,14 +7,10 @@ from sahi import AutoDetectionModel
 from sahi.predict import get_sliced_prediction
 from sahi.utils.yolov8 import download_yolov8s_model
 
-from files import increment_path
 
 
 def main(exist_ok=True, view_img=False, save_img=True):
     source = 'video.mp4'
-    if not Path(source).exists():
-        raise FileNotFoundError(f"Source path '{source}' does not exist.")
-
     yolov8_model_path = 'models/yolov8n.pt'
     download_yolov8s_model(yolov8_model_path)
     detection_model = AutoDetectionModel.from_pretrained(model_type='yolov8',
@@ -53,30 +50,11 @@ def main(exist_ok=True, view_img=False, save_img=True):
             clss_list.append(clss)
 
         for box, cls in zip(boxes_list, clss_list):
-            random_rgb = [random.randint(0, 255) for _ in range(3)]
-            label = str(cls)
             x1, y1, x2, y2 = box
-
-            label_colors = {
-                'person': (0, 100, 0),
-                'car': (160, 82, 45),
-                'bus': (138, 43, 226),
-                'truck': (0, 100, 0),
-                'backpack': (255, 105, 180),
-                'handbag': (255, 105, 180),
-                'dog': (144, 238, 144),
-                'traffic light': (139, 0, 0),
-                'umbrella': (240, 230, 140),
-                'baseball glove': (240, 230, 140)
-            }
-
-            color = label_colors.get(label, random_rgb)
-
-            cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), color, 2)
-
-            # label
-            t_size = cv2.getTextSize(label, 0, fontScale=1, thickness=1)[0]
-            cv2.rectangle(frame, (int(x1), int(y1) - t_size[1] - 3), (int(x1) + t_size[0], int(y1) + 3), color,
+            cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (56, 56, 255), 2)
+            label = str(cls)
+            t_size = cv2.getTextSize(label, 0, fontScale=0.6, thickness=1)[0]
+            cv2.rectangle(frame, (int(x1), int(y1) - t_size[1] - 3), (int(x1) + t_size[0], int(y1) + 3), (56, 56, 255),
                           -1)
             cv2.putText(frame,
                         label, (int(x1), int(y1) - 2),
@@ -85,17 +63,33 @@ def main(exist_ok=True, view_img=False, save_img=True):
                         thickness=1,
                         lineType=cv2.LINE_AA)
 
-            if view_img:
-                cv2.imshow(Path(source).stem, frame)
-            if save_img:
-                video_writer.write(frame)
+        if view_img:
+            cv2.imshow(Path(source).stem, frame)
+        if save_img:
+            video_writer.write(frame)
 
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
         video_writer.release()
         videocapture.release()
         cv2.destroyAllWindows()
 
+def increment_path(path, exist_ok=False, sep='', mkdir=False):
+    path = Path(path)  # os-agnostic
+    if path.exists() and not exist_ok:
+        path, suffix = (path.with_suffix(''), path.suffix) if path.is_file() else (path, '')
+
+        # Method 1
+        for n in range(2, 9999):
+            p = f'{path}{sep}{n}{suffix}'  # increment path
+            if not os.path.exists(p):  #
+                break
+        path = Path(p)
+
+    if mkdir:
+        path.mkdir(parents=True, exist_ok=True)  # make directory
+
+    return path
 
 if __name__ == '__main__':
     main()
